@@ -1,32 +1,35 @@
-"use strict";
+// Import des modules requis
+const express = require('express');
+const nodemailer = require('nodemailer');
 
-const express = require("express");
-const nodemailer = require("nodemailer");
-
+// Créer une application Express
 const app = express();
+
+// Middleware pour analyser les corps de requêtes en JSON
 app.use(express.json());
 
-// Load environment variables
-const WEBHOOK_VERIFY_TOKEN = process.env.VERIFY_TOKEN;
-const EMAIL_PASS = process.env.EMAIL_PASS;
-const PORT = process.env.PORT || 1337;
+// Définir le port et le jeton de vérification
+const port = process.env.PORT || 3000;
+const verifyToken = process.env.VERIFY_TOKEN;
 
-// Nodemailer transporter setup
+// --- Nodemailer transporter setup ---
+// Configurez Nodemailer pour envoyer des e-mails via Gmail
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "lingalemohamed250@gmail.com", // Your sending email address
-    pass: EMAIL_PASS, // Use environment variable for security
+    user: "lingalemohamed250@gmail.com", // Votre adresse e-mail d'envoi
+    pass: process.env.EMAIL_PASS, // Votre mot de passe d'application généré
   },
 });
+// --- Fin de la configuration Nodemailer ---
 
-// Function to send email
-async function sendEmail(messageData) {
+// Fonction pour envoyer une notification par e-mail
+async function sendEmailNotification(subject, text) {
   const mailOptions = {
-    from: "lingalemohamed250@gmail.com",
-    to: "lingalemohamed250@gmail.com", // Your actual recipient email
-    subject: "New WhatsApp Message Received",
-    text: JSON.stringify(messageData, null, 2), // Attach JSON data to the email body
+    from: "mohamedlingale250@gmail.com", // Votre adresse d'envoi
+    to: "lingalemohamed250@gmail.com", // Votre adresse de réception
+    subject: subject,
+    text: text,
   };
 
   try {
@@ -37,49 +40,52 @@ async function sendEmail(messageData) {
   }
 }
 
-// Webhook Verification Endpoint (GET)
-app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
+// Route pour les requêtes GET (vérification du webhook)
+app.get('/', (req, res) => {
+  const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
-  if (mode === "subscribe" && token === WEBHOOK_VERIFY_TOKEN) {
-    console.log("WEBHOOK_VERIFIED");
+  if (mode === 'subscribe' && token === verifyToken) {
+    console.log('WEBHOOK VERIFIED');
     res.status(200).send(challenge);
   } else {
-    res.sendStatus(403);
+    res.status(403).end();
   }
 });
 
-// Webhook Payload Endpoint (POST)
-app.post("/webhook", async (req, res) => {
-  console.log("Incoming webhook payload:", JSON.stringify(req.body, null, 2));
+// Route pour les requêtes POST (réception des payloads de webhook)
+app.post('/', async (req, res) => { // 'async' est nécessaire pour utiliser 'await'
+  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  console.log(`\n\nWebhook received ${timestamp}\n`);
+  
+  // Extraire le message pour le débogage
+  console.log(JSON.stringify(req.body, null, 2));
 
-  // Extract the message object safely
+  // Vérifier si la requête est un message WhatsApp
   const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
   if (message) {
-    const from = message.from;
-    const msg_body = message.text?.body || "N/A"; // Handle non-text messages
-    const phone_number_id = req.body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
-
-    const messageData = {
-      from: from,
-      msg_body: msg_body,
-      phone_number_id: phone_number_id,
+    // Crée un nouvel objet avec seulement les informations désirées
+    const essentialMessageInfo = {
+      from: message.from,
+      id: message.id,
       timestamp: message.timestamp,
-      type: message.type
+      type: message.type,
+      body: message.type === 'text' ? message.text.body : 'Contenu non textuel'
     };
+    
+    // Le corps de l'e-mail sera le JSON de cet objet
+    const emailSubject = `Nouveau message WhatsApp - Données JSON`;
+    const emailText = JSON.stringify(essentialMessageInfo, null, 2);
 
-    // Send email with extracted data
-    await sendEmail(messageData);
+    await sendEmailNotification(emailSubject, emailText);
+  } else {
+    console.log('Payload inattendu ou sans message, possiblement une mise à jour de statut.');
   }
-
-  // Always respond with a 200 OK
-  res.sendStatus(200);
+  
+  res.status(200).end();
 });
 
-// Start the Express server
-app.listen(PORT, () => {
-  console.log(`Webhook is listening on port ${PORT}`);
+// Start the server
+app.listen(port, () => {
+  console.log(`\nListening on port ${port}\n`);
 });
