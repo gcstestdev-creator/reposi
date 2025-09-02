@@ -1,35 +1,32 @@
-// Import des modules requis
-const express = require('express');
-const nodemailer = require('nodemailer');
+"use strict";
 
-// Créer une application Express
+const express = require("express");
+const nodemailer = require("nodemailer");
+
 const app = express();
-
-// Middleware pour analyser les corps de requêtes en JSON
 app.use(express.json());
 
-// Définir le port et le jeton de vérification
-const port = process.env.PORT || 3000;
-const verifyToken = process.env.VERIFY_TOKEN;
+// Load environment variables
+const WEBHOOK_VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const PORT = process.env.PORT || 1337;
 
-// --- Nodemailer transporter setup ---
-// Configurez Nodemailer pour envoyer des e-mails via Gmail
+// Nodemailer transporter setup
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "lingalemohamed250@gmail.com", // Votre adresse e-mail d'envoi
-    pass: process.env.EMAIL_PASS, // Votre mot de passe d'application généré
+    user: "lingalemohamed250@gmail.com", // Your sending email address
+    pass: EMAIL_PASS, // Use environment variable for security
   },
 });
-// --- Fin de la configuration Nodemailer ---
 
-// Fonction pour envoyer une notification par e-mail
-async function sendEmailNotification(subject, text) {
+// Function to send email
+async function sendEmail(messageData) {
   const mailOptions = {
-    from: "mohamedlingale250@gmail.com", // Votre adresse d'envoi
-    to: "lingalemohamed250@gmail.com", // Votre adresse de réception
-    subject: subject,
-    text: text,
+    from: "lingalemohamed250@gmail.com",
+    to: "lingalemohamed250@gmail.com", // Your actual recipient email
+    subject: "New WhatsApp Message Received",
+    text: JSON.stringify(messageData, null, 2), // Attach JSON data to the email body
   };
 
   try {
@@ -40,48 +37,49 @@ async function sendEmailNotification(subject, text) {
   }
 }
 
-// Route pour les requêtes GET (vérification du webhook)
-app.get('/', (req, res) => {
-  const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
+// Webhook Verification Endpoint (GET)
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
 
-  if (mode === 'subscribe' && token === verifyToken) {
-    console.log('WEBHOOK VERIFIED');
+  if (mode === "subscribe" && token === WEBHOOK_VERIFY_TOKEN) {
+    console.log("WEBHOOK_VERIFIED");
     res.status(200).send(challenge);
   } else {
-    res.status(403).end();
+    res.sendStatus(403);
   }
 });
 
-// Route pour les requêtes POST (réception des payloads de webhook)
-app.post('/', async (req, res) => { // 'async' est nécessaire pour utiliser 'await'
-  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  console.log(`\n\nWebhook received ${timestamp}\n`);
-  
-  // Extraire les informations du message pour le débogage
-  console.log(JSON.stringify(req.body, null, 2));
+// Webhook Payload Endpoint (POST)
+app.post("/webhook", async (req, res) => {
+  console.log("Incoming webhook payload:", JSON.stringify(req.body, null, 2));
 
-  // Vérifier si la requête est un message WhatsApp
-  if (req.body.object === 'whatsapp_business_account' && req.body.entry) {
-    const changes = req.body.entry[0]?.changes[0]?.value;
-    const messages = changes?.messages;
+  // Extract the message object safely
+  const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-    if (messages) {
-      // Le corps de l'e-mail sera le JSON complet du message
-      const emailSubject = `Nouveau message WhatsApp - Données JSON`;
-      const emailText = JSON.stringify(req.body, null, 2);
+  if (message) {
+    const from = message.from;
+    const msg_body = message.text?.body || "N/A"; // Handle non-text messages
+    const phone_number_id = req.body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
 
-      await sendEmailNotification(emailSubject, emailText);
-    } else {
-      console.log('Payload reçu sans message, possiblement une mise à jour de statut.');
-    }
-  } else {
-    console.log('Payload non reconnu.');
+    const messageData = {
+      from: from,
+      msg_body: msg_body,
+      phone_number_id: phone_number_id,
+      timestamp: message.timestamp,
+      type: message.type
+    };
+
+    // Send email with extracted data
+    await sendEmail(messageData);
   }
-  
-  res.status(200).end();
+
+  // Always respond with a 200 OK
+  res.sendStatus(200);
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`\nListening on port ${port}\n`);
+// Start the Express server
+app.listen(PORT, () => {
+  console.log(`Webhook is listening on port ${PORT}`);
 });
