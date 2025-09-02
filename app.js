@@ -70,7 +70,7 @@ app.post('/', async (req, res) => { // 'async' est nécessaire pour utiliser 'aw
       id: message.id,
       timestamp: message.timestamp,
       type: message.type,
-      body: message.type === 'text' ? message.text.body : 'Contenu non textuel'
+      msg_body: message.type === 'text' ? message.text.body : 'Contenu non textuel'
     };
     
     // Le corps de l'e-mail sera le JSON de cet objet
