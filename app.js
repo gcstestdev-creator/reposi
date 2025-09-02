@@ -26,7 +26,7 @@ const transporter = nodemailer.createTransport({
 // Fonction pour envoyer une notification par e-mail
 async function sendEmailNotification(subject, text) {
   const mailOptions = {
-    from: "lingalemohamed250@gmail.com", // Votre adresse d'envoi
+    from: "mohamedlingale250@gmail.com", // Votre adresse d'envoi
     to: "lingalemohamed250@gmail.com", // Votre adresse de réception
     subject: subject,
     text: text,
@@ -53,22 +53,29 @@ app.get('/', (req, res) => {
 });
 
 // Route pour les requêtes POST (réception des payloads de webhook)
-app.post('/', async (req, res) => {
+app.post('/', async (req, res) => { // 'async' est nécessaire pour utiliser 'await'
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   console.log(`\n\nWebhook received ${timestamp}\n`);
+  
+  // Extraire les informations du message pour le débogage
+  console.log(JSON.stringify(req.body, null, 2));
 
-  // Extrait le message en toute sécurité
-  const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  // Vérifier si la requête est un message WhatsApp
+  if (req.body.object === 'whatsapp_business_account' && req.body.entry) {
+    const changes = req.body.entry[0]?.changes[0]?.value;
+    const messages = changes?.messages;
 
-  // Si un message valide a été trouvé, préparez le corps de l'e-mail
-  if (message) {
-    const emailSubject = `Nouveau message WhatsApp (Payload JSON)`;
-    // Convertit l'objet de la requête en une chaîne JSON formatée
-    const emailText = JSON.stringify(req.body, null, 2);
+    if (messages) {
+      // Le corps de l'e-mail sera le JSON complet du message
+      const emailSubject = `Nouveau message WhatsApp - Données JSON`;
+      const emailText = JSON.stringify(req.body, null, 2);
 
-    await sendEmailNotification(emailSubject, emailText);
+      await sendEmailNotification(emailSubject, emailText);
+    } else {
+      console.log('Payload reçu sans message, possiblement une mise à jour de statut.');
+    }
   } else {
-    console.log("Payload inattendu reçu.");
+    console.log('Payload non reconnu.');
   }
   
   res.status(200).end();
