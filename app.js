@@ -1,14 +1,14 @@
-// Import Express.js et Nodemailer
+// Import des modules requis
 const express = require('express');
 const nodemailer = require('nodemailer');
 
-// Create an Express app
+// Créer une application Express
 const app = express();
 
-// Middleware to parse JSON bodies
+// Middleware pour analyser les corps de requêtes en JSON
 app.use(express.json());
 
-// Set port and verify_token
+// Définir le port et le jeton de vérification
 const port = process.env.PORT || 3000;
 const verifyToken = process.env.VERIFY_TOKEN;
 
@@ -17,7 +17,7 @@ const verifyToken = process.env.VERIFY_TOKEN;
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "lingalemohamed250@gmail.com", // Votre adresse e-mail d'envoi
+    user: "mohamedlingale250@gmail.com", // Votre adresse e-mail d'envoi
     pass: process.env.EMAIL_PASS, // Votre mot de passe d'application généré
   },
 });
@@ -40,7 +40,7 @@ async function sendEmailNotification(subject, text) {
   }
 }
 
-// Route for GET requests
+// Route pour les requêtes GET (vérification du webhook)
 app.get('/', (req, res) => {
   const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
@@ -52,25 +52,23 @@ app.get('/', (req, res) => {
   }
 });
 
-// Route for POST requests
-app.post('/', async (req, res) => { // NOTE: 'async' est ajouté ici
+// Route pour les requêtes POST (réception des payloads de webhook)
+app.post('/', async (req, res) => {
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   console.log(`\n\nWebhook received ${timestamp}\n`);
-  console.log(JSON.stringify(req.body, null, 2));
 
-  // Extraction du message pour l'envoi d'e-mail
+  // Extrait le message en toute sécurité
   const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-  if (message && message.type === "text") {
-    const from = message.from;
-    const msgBody = message.text.body;
-
-    const emailSubject = `Nouveau message WhatsApp de ${from}`;
-    const emailText = `Vous avez reçu le message suivant :\n\n"${msgBody}"`;
+  // Si un message valide a été trouvé, préparez le corps de l'e-mail
+  if (message) {
+    const emailSubject = `Nouveau message WhatsApp (Payload JSON)`;
+    // Convertit l'objet de la requête en une chaîne JSON formatée
+    const emailText = JSON.stringify(req.body, null, 2);
 
     await sendEmailNotification(emailSubject, emailText);
   } else {
-    console.log("Message non textuel ou payload inattendu reçu.");
+    console.log("Payload inattendu reçu.");
   }
   
   res.status(200).end();
