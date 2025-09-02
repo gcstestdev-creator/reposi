@@ -27,7 +27,7 @@ const transporter = nodemailer.createTransport({
 async function sendEmailNotification(subject, text) {
   const mailOptions = {
     from: "mohamedlingale250@gmail.com", // Votre adresse d'envoi
-    to: "lingalemohamed250@gmail.com", // Votre adresse de réception
+    to: "gcstestdev@gmail.com", // Votre adresse de réception
     subject: subject,
     text: text,
   };
