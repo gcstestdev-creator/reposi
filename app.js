@@ -1,7 +1,6 @@
 // Import des modules requis
 const express = require('express');
 const nodemailer = require('nodemailer');
-const axios = require('axios'); // Import d'Axios
 
 // Créer une application Express
 const app = express();
@@ -9,11 +8,9 @@ const app = express();
 // Middleware pour analyser les corps de requêtes en JSON
 app.use(express.json());
 
-// Définir le port et les jetons
+// Définir le port et le jeton de vérification
 const port = process.env.PORT || 3000;
 const verifyToken = process.env.VERIFY_TOKEN;
-const whatsAppToken = process.env.WHATSAPP_TOKEN;
-const whatsAppPhoneId = process.env.WHATSAPP_PHONE_ID;
 
 // --- Nodemailer transporter setup ---
 // Configurez Nodemailer pour envoyer des e-mails via Gmail
@@ -26,49 +23,20 @@ const transporter = nodemailer.createTransport({
 });
 // --- Fin de la configuration Nodemailer ---
 
-// Fonction pour récupérer un fichier de l'API WhatsApp
-async function getWhatsAppMedia(mediaId, token) {
-  try {
-    const response = await axios({
-      url: `https://graph.facebook.com/v19.0/${mediaId}`,
-      method: 'GET',
-      responseType: 'arraybuffer', // Pour gérer les données binaires
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    const fileBuffer = Buffer.from(response.data, 'binary');
-    const contentType = response.headers['content-type'];
-    const fileName = mediaId;
-
-    return {
-      filename: fileName,
-      content: fileBuffer,
-      contentType: contentType,
-      cid: mediaId // Utilisation du CID pour l'intégration dans le corps de l'e-mail
-    };
-  } catch (error) {
-    console.error(`Erreur lors de la récupération du fichier ${mediaId}:`, error.message);
-    return null;
-  }
-}
-
 // Fonction pour envoyer une notification par e-mail
-async function sendEmailNotification(subject, text, attachments = []) {
+async function sendEmailNotification(subject, text) {
   const mailOptions = {
     from: "lingalemohamed250@gmail.com", // Votre adresse d'envoi
     to: "lingalemohamed250@gmail.com", // Votre adresse de réception
     subject: subject,
     text: text,
-    attachments: attachments
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log("Notification par e-mail envoyée avec succès !");
+    console.log("Email notification sent successfully!");
   } catch (error) {
-    console.error("Erreur lors de l'envoi de la notification par e-mail:", error);
+    console.error("Error sending email notification:", error);
   }
 }
 
@@ -87,7 +55,7 @@ app.get('/', (req, res) => {
 // Route pour les requêtes POST (réception des payloads de webhook)
 app.post('/', async (req, res) => {
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  console.log(`\n\nWebhook reçu ${timestamp}\n`);
+  console.log(`\n\nWebhook received ${timestamp}\n`);
   
   // Extraire le message pour le débogage
   console.log(JSON.stringify(req.body, null, 2));
@@ -98,7 +66,6 @@ app.post('/', async (req, res) => {
   if (message) {
     let msgContent;
     let emailSubject;
-    let attachments = [];
 
     switch (message.type) {
       case 'text':
@@ -108,24 +75,10 @@ app.post('/', async (req, res) => {
       case 'image':
         msgContent = `Message de type "image" reçu. ID de l'image : ${message.image.id}`;
         emailSubject = `Nouvelle image WhatsApp`;
-        
-        // Récupération de l'image
-        const imageAttachment = await getWhatsAppMedia(message.image.id, whatsAppToken);
-        if (imageAttachment) {
-          imageAttachment.filename = "image.jpg"; // Nom de fichier par défaut
-          attachments.push(imageAttachment);
-        }
         break;
       case 'document':
         msgContent = `Message de type "document" reçu. Nom du document : ${message.document.filename}, ID : ${message.document.id}`;
         emailSubject = `Nouveau document WhatsApp`;
-        
-        // Récupération du document
-        const docAttachment = await getWhatsAppMedia(message.document.id, whatsAppToken);
-        if (docAttachment) {
-          docAttachment.filename = message.document.filename;
-          attachments.push(docAttachment);
-        }
         break;
       case 'audio':
         msgContent = `Message de type "audio" reçu. ID audio : ${message.audio.id}`;
@@ -151,7 +104,7 @@ app.post('/', async (req, res) => {
     
     const emailText = JSON.stringify(essentialMessageInfo, null, 2);
 
-    await sendEmailNotification(emailSubject, emailText, attachments);
+    await sendEmailNotification(emailSubject, emailText);
 
   } else {
     console.log('Payload inattendu ou sans message, possiblement une mise à jour de statut.');
