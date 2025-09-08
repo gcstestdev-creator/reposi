@@ -19,7 +19,7 @@ const whatsAppToken = process.env.WHATSAPP_TOKEN;
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "mohamedlingale250@gmail.com", // Votre adresse e-mail d'envoi
+    user: "lingalemohamed250@gmail.com", // Votre adresse e-mail d'envoi
     pass: process.env.EMAIL_PASS, // Votre mot de passe d'application généré
   },
 });
@@ -55,7 +55,7 @@ async function getWhatsAppMedia(mediaId, token) {
 // Fonction pour envoyer une notification par e-mail
 async function sendEmailNotification(subject, text, attachments = []) {
   const mailOptions = {
-    from: "mohamedlingale250@gmail.com", // Votre adresse d'envoi
+    from: "lingalemohamed250@gmail.com", // Votre adresse d'envoi
     to: "lingalemohamed250@gmail.com", // Votre adresse de réception
     subject: subject,
     text: text,
