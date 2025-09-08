@@ -17,7 +17,7 @@ const verifyToken = process.env.VERIFY_TOKEN;
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "mohamedlingale250@gmail.com", // Votre adresse e-mail d'envoi
+    user: "lingalemohamed250@gmail.com", // Votre adresse e-mail d'envoi
     pass: process.env.EMAIL_PASS, // Votre mot de passe d'application généré
   },
 });
