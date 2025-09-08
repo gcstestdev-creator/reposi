@@ -26,7 +26,7 @@ const transporter = nodemailer.createTransport({
 // Fonction pour envoyer une notification par e-mail
 async function sendEmailNotification(subject, text) {
   const mailOptions = {
-    from: "mohamedlingale250@gmail.com", // Votre adresse d'envoi
+    from: "lingalemohamed250@gmail.com", // Votre adresse d'envoi
     to: "lingalemohamed250@gmail.com", // Votre adresse de réception
     subject: subject,
     text: text,
