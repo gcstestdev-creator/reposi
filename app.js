@@ -17,7 +17,7 @@ const verifyToken = process.env.VERIFY_TOKEN;
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "lingalemohamed250@gmail.com", // Votre adresse e-mail d'envoi
+    user: "mohamedlingale250@gmail.com", // Votre adresse e-mail d'envoi
     pass: process.env.EMAIL_PASS, // Votre mot de passe d'application généré
   },
 });
@@ -53,7 +53,7 @@ app.get('/', (req, res) => {
 });
 
 // Route pour les requêtes POST (réception des payloads de webhook)
-app.post('/', async (req, res) => { // 'async' est nécessaire pour utiliser 'await'
+app.post('/', async (req, res) => {
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   console.log(`\n\nWebhook received ${timestamp}\n`);
   
@@ -64,20 +64,48 @@ app.post('/', async (req, res) => { // 'async' est nécessaire pour utiliser 'aw
   const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
   if (message) {
-    // Crée un nouvel objet avec seulement les informations désirées
+    let msgContent;
+    let emailSubject;
+
+    switch (message.type) {
+      case 'text':
+        msgContent = message.text.body;
+        emailSubject = `Nouveau message texte WhatsApp`;
+        break;
+      case 'image':
+        msgContent = `Message de type "image" reçu. ID de l'image : ${message.image.id}`;
+        emailSubject = `Nouvelle image WhatsApp`;
+        break;
+      case 'document':
+        msgContent = `Message de type "document" reçu. Nom du document : ${message.document.filename}, ID : ${message.document.id}`;
+        emailSubject = `Nouveau document WhatsApp`;
+        break;
+      case 'audio':
+        msgContent = `Message de type "audio" reçu. ID audio : ${message.audio.id}`;
+        emailSubject = `Nouveau message audio WhatsApp`;
+        break;
+      case 'video':
+        msgContent = `Message de type "vidéo" reçu. ID de la vidéo : ${message.video.id}`;
+        emailSubject = `Nouvelle vidéo WhatsApp`;
+        break;
+      default:
+        msgContent = `Message de type inconnu ou non pris en charge : ${message.type}`;
+        emailSubject = `Nouveau message WhatsApp - Type inconnu`;
+    }
+
+    // Crée un nouvel objet avec les informations essentielles
     const essentialMessageInfo = {
       from: message.from,
       id: message.id,
       timestamp: message.timestamp,
       type: message.type,
-      msg_body: message.type === 'text' ? message.text.body : 'Contenu non textuel'
+      content: msgContent
     };
     
-    // Le corps de l'e-mail sera le JSON de cet objet
-    const emailSubject = `Nouveau message WhatsApp - Données JSON`;
     const emailText = JSON.stringify(essentialMessageInfo, null, 2);
 
     await sendEmailNotification(emailSubject, emailText);
+
   } else {
     console.log('Payload inattendu ou sans message, possiblement une mise à jour de statut.');
   }
