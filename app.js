@@ -1,7 +1,7 @@
 // Import des modules requis
 const express = require('express');
-const nodemailer = require('nodemailer');
 const axios = require('axios');
+const { Resend } = require('resend');
 
 // Créer une application Express
 const app = express();
@@ -14,18 +14,8 @@ const port = process.env.PORT || 3000;
 const verifyToken = process.env.VERIFY_TOKEN;
 const whatsAppToken = process.env.WHATSAPP_TOKEN;
 
-// --- Nodemailer transporter setup ---
-// Configurez Nodemailer pour envoyer des e-mails via Gmail
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "lingalemohamed250@gmail.com", // Votre adresse e-mail d'envoi
-    pass: process.env.EMAIL_PASS, // Votre mot de passe d'application généré
-  },
-});
-// --- Fin de la configuration Nodemailer ---
-
-
+// --- Resend setup ---
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Fonction pour récupérer les métadonnées d'un fichier de l'API WhatsApp
 async function getWhatsAppMediaUrl(mediaId, token) {
@@ -37,7 +27,6 @@ async function getWhatsAppMediaUrl(mediaId, token) {
         'Authorization': `Bearer ${token}`
       }
     });
-
     return response.data;
   } catch (error) {
     console.error(`Erreur lors de la récupération des métadonnées du fichier ${mediaId}:`, error.message);
@@ -45,20 +34,18 @@ async function getWhatsAppMediaUrl(mediaId, token) {
   }
 }
 
-// Fonction pour envoyer une notification par e-mail
+// Fonction pour envoyer une notification par e-mail via Resend
 async function sendEmailNotification(subject, text) {
-  const mailOptions = {
-    from: "lingalemohamed250@gmail.com", // Votre adresse d'envoi
-    to: "lingalemohamed250@gmail.com", // Votre adresse de réception
-    subject: subject,
-    text: text,
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
-    console.log("Notification par e-mail envoyée avec succès !");
+    await resend.emails.send({
+      from: 'lingalemohamed250@gmail.com',
+      to: 'lingalemohamed250@gmail.com',
+      subject: subject,
+      text: text,
+    });
+    console.log("Notification par e-mail envoyée via Resend !");
   } catch (error) {
-    console.error("Erreur lors de l'envoi de la notification par e-mail:", error);
+    console.error("Erreur en envoyant l'email via Resend :", error);
   }
 }
 
@@ -120,14 +107,14 @@ app.post('/', async (req, res) => {
         emailSubject = `Nouveau message WhatsApp - Type inconnu`;
     }
 
-    // Crée un nouvel objet avec les informations essentielles
+    // Crée un objet avec les informations essentielles
     const essentialMessageInfo = {
       from: message.from,
       id: message.id,
       timestamp: message.timestamp,
       type: message.type,
       content: msgContent,
-      media_data: mediaData // Ajoute les données de l'image/audio
+      media_data: mediaData
     };
     
     const emailText = JSON.stringify(essentialMessageInfo, null, 2);
