@@ -13,7 +13,7 @@ app.use(express.json());
 const port = process.env.PORT || 3000;
 const verifyToken = process.env.VERIFY_TOKEN;
 const whatsAppToken = process.env.WHATSAPP_TOKEN;
-/*
+
 // --- Nodemailer transporter setup ---
 // Configurez Nodemailer pour envoyer des e-mails via Gmail
 const transporter = nodemailer.createTransport({
@@ -24,20 +24,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 // --- Fin de la configuration Nodemailer ---
-*/
 
-// Configuration alternative avec port 587 (TLS/STARTTLS)
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false, // true pour le port 465, false pour les autres
-    auth: {
-        user: "lingalemohamed250@gmail.com",
-        pass: process.env.EMAIL_PASS, // Mot de passe d'application !
-    },
-    // Ajout d'un timeout peut aussi aider au diagnostic
-    // timeout: 10000 // 10 secondes
-});
 
 
 // Fonction pour récupérer les métadonnées d'un fichier de l'API WhatsApp
